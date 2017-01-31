@@ -4,60 +4,48 @@ open Model
 open System.Collections.Generic
 open System
 
+let subscriptions = new Dictionary<Topic, MessageHandler list>();
+
+let getSubscriptionTopic = fun (msg: Message) ->
+    match msg with
+    | OrderPlaced _ -> OrderPlacedTopic
+    | OrderCooked _ -> OrderCookedTopic
+    | OrderPriced _ -> OrderPricedTopic
+    | OrderPaid _ -> OrderPaidTopic
+    
+let publish = fun (msg: Message) ->
+    match subscriptions.TryGetValue(getSubscriptionTopic msg) with
+        | (true, s) ->
+            for handler in s do
+                handler msg
+        | (false, _) -> ()
+
+
 type Agent<'T> = MailboxProcessor<'T>
 
-
-type ThreadedHandler (nextHandler : Handle) =
+type ThreadedHandler (handler: MessageHandler, name : string) =
     let queue = new Queue<Order>()
 
     let agent =
         Agent.Start(fun inbox ->
             async {
                 while true do
-                    let! order = inbox.Receive()
-                    nextHandler order
+                    let! msg = inbox.Receive()
+                    handler msg
                 }
             )
     
-    member this.Handle (order : Order) = agent.Post order
+    member this.Handle (msg : Message) = agent.Post msg
     
-    member this.Length = agent.CurrentQueueLength
+    member this.Count = agent.CurrentQueueLength
+    member this.Name = name
 
-//type WaiterMailbox () =
-//
-//    static let createOrder tableNumber = 
-//        let order = 
-//            {
-//                TableNumber = tableNumber;
-//                SubTotal = 0.0;
-//                Tax = 0.0;
-//                Total = 0.0;
-//                Ingredients = "";
-//                OrderId = Guid.NewGuid();
-//                Items = List.Empty;
-//                IsPaid = false;
-//            };
-//
-//        order
-//    
-//    static let agent = MailboxProcessor.Start(fun inbox -> 
-//
-//        // the message processing function
-//        let rec messageLoop oldState = async{
-//
-//            // read a message
-//            let! msg = inbox.Receive()
-//
-//            // do the core logic
-//            let newOrder = createOrder msg
-//
-//            // loop to top
-//            return! messageLoop newOrder 
-//        }
-//
-//        // start the loop 
-//        messageLoop 0
-//        )
-//
-//    // public interface to hide the implementation
-//    static member Add i = agent.Post i
+
+
+let subscribe = fun (topic : Topic) (handler : MessageHandler) ->
+    subscriptions.[topic] <-
+        match subscriptions.TryGetValue(topic) with
+        | (true, s) -> s @ [ handler ]
+        | (false, _) -> [ handler ]
+
+
