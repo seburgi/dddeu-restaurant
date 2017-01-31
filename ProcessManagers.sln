@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Actor", "Actor\Actor.fsproj", "{2391091B-CD0C-4641-9DB1-7FED0A4B202D}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Contracts", "Contracts\Contracts.fsproj", "{C7E25D08-C7C1-4CF8-BAD6-EED91FE47A27}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2391091B-CD0C-4641-9DB1-7FED0A4B202D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2391091B-CD0C-4641-9DB1-7FED0A4B202D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2391091B-CD0C-4641-9DB1-7FED0A4B202D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2391091B-CD0C-4641-9DB1-7FED0A4B202D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C7E25D08-C7C1-4CF8-BAD6-EED91FE47A27}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C7E25D08-C7C1-4CF8-BAD6-EED91FE47A27}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C7E25D08-C7C1-4CF8-BAD6-EED91FE47A27}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C7E25D08-C7C1-4CF8-BAD6-EED91FE47A27}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
