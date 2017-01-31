@@ -3,8 +3,6 @@
 open System
 open System.Threading
 
-// Learn more about F# at http://fsharp.org
-// See the 'F# Tutorial' project for more help.
 
 type Item = {
     Name : string
@@ -25,18 +23,16 @@ type Order = {
 
 type Handle = Order -> unit
 
-//let handle = fun (o : Order) -> ()
-
 let orderPrinter = fun (o : Order) ->
     printf "%A" o
     ()
 
 // Waiter functions
 
-let placeOrder = fun (handle : Handle) (orderInfo : string) ->
+let placeOrder = fun (nextHandle : Handle) (tableNumber : int) ->
     let order = 
         {
-            TableNumber = 3;
+            TableNumber = tableNumber;
             SubTotal = 0.0;
             Tax = 0.0;
             Total = 0.0;
@@ -45,26 +41,25 @@ let placeOrder = fun (handle : Handle) (orderInfo : string) ->
             Items = List.Empty;
             IsPaid = false;
         };
-    handle(order)
+    nextHandle(order)
 
 // Cook functions
 
-let cookFood = fun (handle : Handle) (order : Order) ->
+let cookFood = fun (nextHandle : Handle) (order : Order) ->
     
     let cookedOrder = { order with
         Ingredients = "Spaghetti"
     
     }
 
-    printf "Cooking..."
+    printf "Cooking...\r\n"
     Thread.Sleep(2000)
 
-    handle(cookedOrder)
+    nextHandle(cookedOrder)
 
 // Assistant Manager functions
 
-
-let priceOrder = fun (handle : Handle) (order : Order) ->
+let priceOrder = fun (nextHandle : Handle) (order : Order) ->
     
     let pricedOrder = { order with
         SubTotal = 12.2
@@ -72,24 +67,24 @@ let priceOrder = fun (handle : Handle) (order : Order) ->
         Tax = 0.2
     }
 
-    printf "Pricing..."
+    printf "Pricing...\r\n"
     Thread.Sleep(2000)
 
-    handle(pricedOrder)
+    nextHandle(pricedOrder)
     
 // Cashier functions
 
-let payOrder = fun (handle : Handle) (order : Order) ->
+let payOrder = fun (nextHandle : Handle) (order : Order) ->
     
     let paidOrder = { order with
         IsPaid = true
     }
 
-    printf "Paying..."
+    printf "Paying...\r\n"
 
     Thread.Sleep(2000)
 
-    handle(paidOrder)
+    nextHandle(paidOrder)
 
 [<EntryPoint>]
 let main argv =
@@ -97,13 +92,10 @@ let main argv =
     let assistantManager = priceOrder cashier
     let cook = cookFood assistantManager
     let waiter = placeOrder cook
+    
+    for i in 0 .. 10 do 
+        waiter i
 
-
-
-
-    waiter "foo"
-
-    printfn "%A" argv
     0 // return an integer exit code
 
     
