@@ -7,75 +7,110 @@ open System.Collections.Generic
 open System.Threading.Tasks
 open ThreadedHandler
 
+let messagePrinter = fun (msg : Message) ->
+    let order = match msg with
+    | OrderPlaced order -> order
+    | OrderCooked order -> order
+    | OrderPriced order -> order
+    | OrderPaid order -> order
 
-let orderPrinter = fun (o : Order) ->
-//    printf "%A\r\n" o
-    printf "Served %d\r\n" o.TableNumber
+    printf ">>> Served %d\r\n" order.TableNumber
     ()
 
 
 
 // Waiter functions
 
-let placeOrder = fun (nextHandle : Handle) (tableNumber : int) ->
+let placeOrder = fun (tableNumber : int) ->
     let order = 
         {
-            TableNumber = tableNumber;
-            SubTotal = 0.0;
-            Tax = 0.0;
-            Total = 0.0;
-            Ingredients = "";
-            OrderId = Guid.NewGuid();
-            Items = List.Empty;
-            IsPaid = false;
+            TableNumber = tableNumber
+            SubTotal = 0.0
+            Tax = 0.0
+            Total = 0.0
+            Ingredients = ""
+            OrderId = Guid.NewGuid()
+            Items = List.Empty
+            IsPaid = false
             CreatedOn = DateTime.Now
+
+            Id = Guid.NewGuid()
+            CorrId = Guid.NewGuid()
+            CauseId = Guid.Empty
         };
-    nextHandle(order)
+    publish (OrderPlaced order)
+
+
+// Cook functions
+
+let cookFood (name : string) (timeToCook : int) (msg : Message) =
+    match msg with
+    | OrderPlaced order ->
+
+
+        let newOrder =
+                 { order with
+                    Ingredients = "Spaghetti"
+                    
+                    Id = Guid.NewGuid()
+                    CauseId = order.Id
+                 }
+    //    printf "%s is cooking...\r\n" name
+        Thread.Sleep(timeToCook)
+
+        publish (OrderCooked newOrder)
+    | _ -> ()
+
+
+// Assistant Manager functions
+
+let priceOrder (msg : Message) =
+
+
+    match msg with
+    | OrderCooked order ->
+    
+        let priced = { order with
+            SubTotal = 12.2
+            Total = 12.2 * 0.2
+            Tax = 0.2
+
+            Id = Guid.NewGuid()
+            CauseId = order.Id
+        }
+
+    //    printf "Pricing...\r\n"
+        Thread.Sleep(500)
+
+        publish (OrderPriced priced)
+    | _ -> ()
+
+    
+// Cashier functions
+
+let payOrder (msg : Message) =
+    
+    match msg with
+    | OrderPriced order ->
+
+        let paid = { order with
+            IsPaid = true
+
+            Id = Guid.NewGuid()
+            CauseId = order.Id
+        }
+
+    //    printf "Paying...\r\n"
+
+        Thread.Sleep(100)
+
+        publish (OrderPaid paid)
+    | _ -> ()
 
 
 let isExpired = fun (order: Order) (ttl : int) ->
     (order.CreatedOn.AddMilliseconds (float ttl)) < DateTime.Now
 
-// Cook functions
-
-let cookFood = fun (name : string) (timeToCook : int) (Message order) ->
-    let newOrder =
-             { order with
-                Ingredients = "Spaghetti"
-             }
-//    printf "%s is cooking...\r\n" name
-    Thread.Sleep(timeToCook)
-
-    publish (OrderCookedMsg (OrderCooked newOrder))
-
-// Assistant Manager functions
-
-let priceOrder = fun ((OrderCooked order) : OrderCooked) ->
-    
-    let priced = OrderPriced { order with
-        SubTotal = 12.2
-        Total = 12.2 * 0.2
-        Tax = 0.2
-    }
-
-//    printf "Pricing...\r\n"
-    Thread.Sleep(500)
-
-    publish (OrderPricedMsg priced)
-    
-// Cashier functions
-
-let payOrder = fun ((OrderPriced order) : OrderPriced) ->
-    
-    let paid = OrderPaid { order with
-        IsPaid = true
-    }
-
-//    printf "Paying...\r\n"
-
-    Thread.Sleep(100)
-
-    publish (OrderPaidMsg paid)
 
 // Repeater
 let repeater = fun (nextHandles : List<Handle>) (order: Order) ->
@@ -103,19 +138,6 @@ let startThread = fun (handler: Handle) (orderQueue : Queue<Order>) ->
 
     ()
 
-//type Agent<'T> = MailboxProcessor<'T>
-// 
-//let agent (nextHandler : Handle) =
-//   Agent.Start(fun inbox ->
-//     async { while true do
-//               let! order = inbox.Receive()
-//               nextHandler order
-//            }
-//            )
-
-//let agentHandler = fun (agent : Agent<Order>) (order : Order) ->
-//    agent.Post order
-
 let rec moreFairHandler = fun (handlers : Queue<ThreadedHandler>) (msg: Message) ->
     let handler = handlers.Dequeue()
     handlers.Enqueue handler
@@ -127,19 +149,22 @@ let rec moreFairHandler = fun (handlers : Queue<ThreadedHandler>) (msg: Message)
         Thread.Sleep(1)
         moreFairHandler handlers msg
 
-let ttlHandler = fun (ttl: int) (msgHandler: MessageHandler) (msg) ->
-//    let order = match msg with
-//        | OrderPlacedMsg (OrderPlaced order) -> order
-//        | OrderCookedMsg (OrderCooked order) -> order
-//        | OrderPricedMsg (OrderPriced order) -> order
-//        | OrderPaidMsg (OrderPaid order) -> order
 
-//    match isExpired order ttl with
-//    | true ->
-//        printf "Dropped %d\r\n" order.TableNumber
-//        ()
-//    | false -> msgHandler msg
-    msgHandler msg
+let ttlHandler (ttl: int) (msgHandler: (Message -> unit)) (msg : Message) =
+    let order = match msg with
+        | (OrderPlaced order) -> Some order
+        | (OrderCooked order) -> Some order
+        | (OrderPriced order) -> Some order
+        | (OrderPaid order) -> Some order
+        | _ -> None
+
+    match order with
+    | Some o when isExpired o ttl ->
+        printf "Dropped %d\r\n" o.TableNumber
+        ()
+    | Some o ->
+        msgHandler msg
+    | _ -> ()
 
 
 let rec monitor = fun (handlers : ThreadedHandler list) ->
@@ -156,22 +181,20 @@ let main argv =
     let orderQueue = new Queue<Order>()
     let threadedHandlerWithQueue = threadedHandler orderQueue
 
-    let oneSecondTtl = ttlHandler 12000
+    let oneSecondTtl = ttlHandler 10000
 
     let cashier = payOrder |> oneSecondTtl
     let cashierT = new ThreadedHandler(cashier, "Cashier")
-
-    let x = handle |> oneSecondTtl
 
     let assistantManager = priceOrder  |> oneSecondTtl
     let assistantManagerT = new ThreadedHandler(assistantManager, "Assistant Manager")
 
     let r = new Random(13)
     
-    let hank = cookFood "Hank" (r.Next(0, 4000))  |> oneSecondTtl
+    let hank = cookFood "Hank" (r.Next(0, 4000)) |> oneSecondTtl
     let hankT = new ThreadedHandler(hank, "Hank")
 
-    let tom = cookFood "Tom" (r.Next(0, 4000))  |> oneSecondTtl
+    let tom = cookFood "Tom" (r.Next(0, 4000)) |> oneSecondTtl
     let tomT = new ThreadedHandler(tom, "Tom")
 
     let suzy = cookFood "Suzy" (r.Next(0, 4000))  |> oneSecondTtl
@@ -190,16 +213,18 @@ let main argv =
 
     let cooksQueue = new Queue<ThreadedHandler>([hankT; tomT; suzyT])
     let cooks = moreFairHandler cooksQueue
+
+    subscribeByTopic Topic.OrderPlacedTopic cooks
+    subscribeByTopic Topic.OrderCookedTopic assistantManagerT.Handle
+    subscribeByTopic Topic.OrderPricedTopic cashierT.Handle
+    subscribeByTopic Topic.OrderPaidTopic messagePrinter
     
+//    subscribeByCorrelationId specialId messagePrinter
 
-    let waiter = placeOrder cooks
-
-
-    subscribe Topic.PaymentReceived cashierT.Handle
-    subscribe Topic.OrderPlaced cooks
-    subscribe Topic.CookingFinished assistantManagerT.Handle
-
+    for agent in toMonitor do 
+        agent.Start()
     
+    let waiter = placeOrder 
     for i in 0 .. 100 do 
         waiter i
 

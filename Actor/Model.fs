@@ -20,6 +20,10 @@ type Order = {
     Items : List<Item>
     IsPaid : bool
     CreatedOn : DateTime
+
+    Id : Guid
+    CorrId : Guid
+    CauseId : Guid
 }
 
 type Handle = Order -> unit
@@ -30,18 +34,14 @@ type Topic =
     | OrderPricedTopic
     | OrderPaidTopic
 
-//type OrderPlaced = OrderPlaced of Order
-//type OrderCooked = OrderCooked of Order
-//type OrderPriced = OrderPriced of Order
-//type OrderPaid = OrderPaid of Order
-
-
 type Message =
-    | OrderPlacedMsg of Order
-    | OrderCookedMsg of Order
-    | OrderPricedMsg of Order
-    | OrderPaidMsg of Order
-
-
+    | OrderPlaced of OrderPlaced
+    | OrderCooked of OrderCooked
+    | OrderPriced of OrderPriced
+    | OrderPaid of OrderPaid
+and OrderPlaced =  Order
+and OrderCooked =  Order
+and OrderPriced =  Order
+and OrderPaid =  Order
 
 type MessageHandler = Message -> unit
